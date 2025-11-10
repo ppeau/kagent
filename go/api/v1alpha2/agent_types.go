@@ -224,6 +224,11 @@ type TypedLocalReference struct {
 	// +optional
 	ApiGroup string `json:"apiGroup"`
 	Name     string `json:"name"`
+	// Namespace is the namespace of the referenced resource.
+	// If empty, the namespace of the referencing resource is used.
+	// This enables cross-namespace agent delegation.
+	// +optional
+	Namespace string `json:"namespace,omitempty"`
 }
 
 func (t *TypedLocalReference) GroupKind() schema.GroupKind {

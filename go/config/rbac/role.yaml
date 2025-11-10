@@ -47,7 +47,7 @@ rules:
   verbs:
   - create
   - delete
-  - get
+  - get  # Required for cross-namespace agent delegation
   - list
   - patch
   - update

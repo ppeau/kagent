@@ -8865,6 +8865,12 @@ spec:
                               type: string
                             name:
                               type: string
+                            namespace:
+                              description: |-
+                                Namespace is the namespace of the referenced resource.
+                                If empty, the namespace of the referencing resource is used.
+                                This enables cross-namespace agent delegation.
+                              type: string
                           required:
                           - name
                           type: object
