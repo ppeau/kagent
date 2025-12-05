@@ -199,18 +199,24 @@ func (a *adkApiTranslator) validateAgent(ctx context.Context, agent *v1alpha2.Ag
 			continue
 		}
 
-		if tool.Agent == nil {
-			return fmt.Errorf("tool must have an agent reference")
-		}
+	if tool.Agent == nil {
+		return fmt.Errorf("tool must have an agent reference")
+	}
 
-		agentRef := types.NamespacedName{
-			Namespace: agent.Namespace,
-			Name:      tool.Agent.Name,
-		}
+	// Support cross-namespace agent delegation
+	agentNamespace := agent.Namespace
+	if tool.Agent.Namespace != "" {
+		agentNamespace = tool.Agent.Namespace
+	}
 
-		if agentRef.Namespace == agent.Namespace && agentRef.Name == agent.Name {
-			return fmt.Errorf("agent tool cannot be used to reference itself, %s", agentRef)
-		}
+	agentRef := types.NamespacedName{
+		Namespace: agentNamespace,
+		Name:      tool.Agent.Name,
+	}
+
+	if agentRef.Namespace == agent.Namespace && agentRef.Name == agent.Name {
+		return fmt.Errorf("agent tool cannot be used to reference itself, %s", agentRef)
+	}
 
 		toolAgent := &v1alpha2.Agent{}
 		err := a.kube.Get(ctx, agentRef, toolAgent)
@@ -547,15 +553,21 @@ func (a *adkApiTranslator) translateInlineAgent(ctx context.Context, agent *v1al
 			if err != nil {
 				return nil, nil, nil, err
 			}
-		case tool.Agent != nil:
-			agentRef := types.NamespacedName{
-				Namespace: agent.Namespace,
-				Name:      tool.Agent.Name,
-			}
+	case tool.Agent != nil:
+		// Support cross-namespace agent delegation
+		agentNamespace := agent.Namespace
+		if tool.Agent.Namespace != "" {
+			agentNamespace = tool.Agent.Namespace
+		}
 
-			if agentRef.Namespace == agent.Namespace && agentRef.Name == agent.Name {
-				return nil, nil, nil, fmt.Errorf("agent tool cannot be used to reference itself, %s", agentRef)
-			}
+		agentRef := types.NamespacedName{
+			Namespace: agentNamespace,
+			Name:      tool.Agent.Name,
+		}
+
+		if agentRef.Namespace == agent.Namespace && agentRef.Name == agent.Name {
+			return nil, nil, nil, fmt.Errorf("agent tool cannot be used to reference itself, %s", agentRef)
+		}
 
 			// Translate a nested tool
 			toolAgent := &v1alpha2.Agent{}

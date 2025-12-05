@@ -224,6 +224,10 @@ type TypedLocalReference struct {
 	// +optional
 	ApiGroup string `json:"apiGroup"`
 	Name     string `json:"name"`
+	// +optional
+	// +kubebuilder:validation:MaxLength=63
+	// +kubebuilder:validation:Pattern=`^[a-z0-9]([-a-z0-9]*[a-z0-9])?$`
+	Namespace string `json:"namespace,omitempty"`
 }
 
 func (t *TypedLocalReference) GroupKind() schema.GroupKind {
