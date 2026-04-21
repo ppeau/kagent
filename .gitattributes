@@ -1,0 +1,2 @@
+# Ensure shell scripts embedded in Go templates always use LF line endings
+go/core/internal/controller/translator/agent/*.sh.tmpl text eol=lf
