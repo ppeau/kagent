@@ -111,6 +111,10 @@ var DefaultServiceAccountName string
 // Per-agent labels from the Agent CRD spec take precedence over these defaults.
 var DefaultAgentPodLabels map[string]string
 
+// DefaultAgentBindHost is the host address agent pods bind to.
+// Defaults to "0.0.0.0" (IPv4 only). Set to "::" for dual-stack (IPv4+IPv6) support.
+var DefaultAgentBindHost = "0.0.0.0"
+
 // TODO(ilackarms): migrate this whole package to pkg/translator
 type AgentOutputs = translator.AgentOutputs
 
@@ -692,6 +696,55 @@ func (a *adkApiTranslator) translateModel(ctx context.Context, namespace, modelC
 		bedrock.APIKeyPassthrough = model.Spec.APIKeyPassthrough
 
 		return bedrock, modelDeploymentData, secretHashBytes, nil
+	case v1alpha2.ModelProviderSAPAICore:
+		if model.Spec.SAPAICore == nil {
+			return nil, nil, nil, fmt.Errorf("sapAICore model config is required")
+		}
+
+		if !model.Spec.APIKeyPassthrough && model.Spec.APIKeySecret != "" {
+			secret := &corev1.Secret{}
+			if err := a.kube.Get(ctx, types.NamespacedName{Namespace: namespace, Name: model.Spec.APIKeySecret}, secret); err != nil {
+				return nil, nil, nil, fmt.Errorf("failed to get SAP AI Core credentials secret: %w", err)
+			}
+
+			modelDeploymentData.EnvVars = append(modelDeploymentData.EnvVars, corev1.EnvVar{
+				Name: env.SAPAICoreClientID.Name(),
+				ValueFrom: &corev1.EnvVarSource{
+					SecretKeyRef: &corev1.SecretKeySelector{
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: model.Spec.APIKeySecret,
+						},
+						Key: "client_id",
+					},
+				},
+			})
+			modelDeploymentData.EnvVars = append(modelDeploymentData.EnvVars, corev1.EnvVar{
+				Name: env.SAPAICoreClientSecret.Name(),
+				ValueFrom: &corev1.EnvVarSource{
+					SecretKeyRef: &corev1.SecretKeySelector{
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: model.Spec.APIKeySecret,
+						},
+						Key: "client_secret",
+					},
+				},
+			})
+		}
+
+		sapAICore := &adk.SAPAICore{
+			BaseModel: adk.BaseModel{
+				Model:   model.Spec.Model,
+				Headers: model.Spec.DefaultHeaders,
+			},
+			BaseUrl:       model.Spec.SAPAICore.BaseURL,
+			ResourceGroup: model.Spec.SAPAICore.ResourceGroup,
+			AuthUrl:       model.Spec.SAPAICore.AuthURL,
+		}
+
+		populateTLSFields(&sapAICore.BaseModel, model.Spec.TLS)
+		sapAICore.APIKeyPassthrough = model.Spec.APIKeyPassthrough
+
+		return sapAICore, modelDeploymentData, secretHashBytes, nil
 	default:
 		return nil, nil, nil, fmt.Errorf("unsupported model provider: %s", model.Spec.Provider)
 	}
